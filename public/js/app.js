@@ -32,59 +32,45 @@ function login() {
 //#endregion Login
 
 //#region Registro
-function register() {
-  const name = document.getElementById('register-name').value;
-  const email = document.getElementById('register-email').value;
-  const password = document.getElementById('register-password').value;
+async function registerUser() {
+    const name = document.getElementById('register-name').value.trim();
+    const email = document.getElementById('register-email').value.trim();
+    const password = document.getElementById('register-password').value;
+    const passwordConfirmation = password;
 
-  fetch(`${apiBaseUrl}/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, password })
-  })
-  .then(async res => {
-    const data = await res.json();
-    if (!res.ok) {
-      console.error('Erro no registro:', data);
-      alert('Registro falhou: ' + (data.error || 'Erro desconhecido.'));
-      return;
-    }
-    token = data.access_token;
-    document.getElementById('auth-section').style.display = 'none';
-    document.getElementById('app-section').classList.remove('d-none');
-    loadLists();
-  })
-  .catch(error => {
-    console.error('Erro na requisição:', error);
-    alert('Erro ao conectar com o servidor!');
-  });
-}
-
-// Função para registrar um novo usuário
-async function registerUser(name, email, password) {
     try {
-        const response = await fetch('http://localhost/todo/public/api/register', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ name, email, password })
-        });
+      const response = await fetch(`${apiBaseUrl}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password, password_confirmation: passwordConfirmation })
+      });
 
-        const data = await response.json();
+      const data = await response.json();
 
-        if (response.ok) {
-            alert(`🎉 Bem-vindo, ${data.user.name}! Cadastro realizado com sucesso.`);
-            localStorage.setItem('access_token', data.access_token);
-        } else {
-            alert(`❌ Erro no cadastro: ${data.message}\n${formatErrors(data.errors)}`);
-        }
+      if (response.ok) {
+        alert(`🎉 Bem-vindo(a), ${data.user.name}! Cadastro realizado com sucesso.`);
+        token = data.access_token;
+        localStorage.setItem('access_token', token);
+        document.getElementById('auth-section').style.display = 'none';
+        document.getElementById('app-section').classList.remove('d-none');
+        loadLists();
+      } else {
+        const errorMessages = formatErrors(data.errors);
+        alert(`❌ Erro no cadastro:\n${data.message}\n${errorMessages}`);
+      }
     } catch (error) {
-        console.error('Erro ao registrar:', error);
-        alert('❌ Erro inesperado ao tentar registrar.');
+      console.error('Erro ao registrar:', error);
+      alert('❌ Erro inesperado ao tentar registrar.');
     }
-}
-//#endregion Registro
+  }
+
+  // Helper para formatar erros recebidos do backend
+  function formatErrors(errors) {
+    if (!errors) return '';
+    return Object.values(errors).map(errList => errList.join('\n')).join('\n');
+  }
+  //#endregion Registro
+
 
 //#region Login
 // Função para logar
@@ -343,7 +329,7 @@ document.getElementById('login-form').addEventListener('submit', e => {
 
 document.getElementById('register-form').addEventListener('submit', e => {
   e.preventDefault();
-  register();
+  registerUser();
 });
 
 document.getElementById('list-form').addEventListener('submit', e => {

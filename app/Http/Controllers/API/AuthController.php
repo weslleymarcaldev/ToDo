@@ -13,63 +13,63 @@ use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
-    #region Register
-    // Registro de usuário
-    public function register(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email',
-            'password' => 'required|string|min:6',
+
+#region Register
+// Registro de usuário
+public function register(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'name' => ['required', 'string', 'max:255'],
+        'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+        'password' => ['required', 'string', 'min:6', 'confirmed'],
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Erro de validação.',
+            'errors' => $validator->errors()
+        ], 422);
+    }
+
+    try {
+        $data = $validator->validated();
+
+        $user = User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => Hash::make($data['password']),
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erro de validação',
-                'errors' => $validator->errors()
-            ], 422);
-        }
+        $token = JWTAuth::fromUser($user);
 
-        try {
-            \DB::listen(function ($query) {
-                logger($query->sql, $query->bindings);
-            });
+        return response()->json([
+            'success' => true,
+            'message' => 'Usuário registrado com sucesso!',
+            'access_token' => $token,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ]
+        ], 201);
 
-            $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-            ]);
+    } catch (\Throwable $e) {
+        \Log::error('Erro no registro: ' . $e->getMessage());
 
-            $token = JWTAuth::fromUser($user);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Usuário registrado com sucesso!',
-                'access_token' => $token,
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                ]
-            ], 201);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erro ao registrar usuário',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'success' => false,
+            'message' => 'Erro interno ao registrar usuário.'
+        ], 500);
     }
-    #endregion Register
+}
+#endregion Register
 
-    #region Login
-    // Login
-    public function login(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
+#region Login
+// Login
+public function login(Request $request)
+{
+    $validator = Validator::make($request->all(), [
             'email' => 'required|string|email',
             'password' => 'required|string',
         ]);
@@ -100,7 +100,7 @@ class AuthController extends Controller
     }
     #endregion Login
 
-    #region Logout
+#region Logout
     // Logout
     public function logout()
     {
@@ -121,7 +121,7 @@ class AuthController extends Controller
     }
     #endregion Logout
 
-    #region Refresh
+#region Refresh
     // Refresh Token
     public function refresh()
     {
